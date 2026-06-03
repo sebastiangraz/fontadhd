@@ -57,13 +57,13 @@ trial-fonts/
 
 The script is built around five composable operations that run sequentially against the target directory.
 
-| Op            | What it does                                                                                          |
-| ------------- | ----------------------------------------------------------------------------------------------------- |
-| `rename`      | Normalizes each immediate child folder name (strip substring, lowercase, hyphenate).                  |
-| `flatten`     | Walks each child folder and moves font files up to the child folder's root.                           |
-| `consolidate` | Detects shared name prefixes between sibling folders and groups them under a single parent.           |
+| Op            | What it does                                                                                               |
+| ------------- | ---------------------------------------------------------------------------------------------------------- |
+| `rename`      | Normalizes each immediate child folder name (strip substring, lowercase, hyphenate).                       |
+| `flatten`     | Walks each child folder and moves font files up to the child folder's root.                                |
+| `consolidate` | Detects shared name prefixes between sibling folders and groups them under a single parent.                |
 | `prune`       | Deletes any file whose extension is in `--prune`. Prompts for confirmation. Opt-in (not in default order). |
-| `clean`       | Removes any empty directories left behind.                                                            |
+| `clean`       | Removes any empty directories left behind.                                                                 |
 
 The default order is `rename → flatten → consolidate → clean`. `prune` is omitted from the default because it is destructive. You can override which ops run and in what order with `--ops`.
 
@@ -89,24 +89,24 @@ The default order is `rename → flatten → consolidate → clean`. `prune` is 
 
 ### Pipeline control
 
-| Flag     | Default                              | Description                                                                |
-| -------- | ------------------------------------ | -------------------------------------------------------------------------- |
-| `--ops`  | `rename,flatten,consolidate,clean`   | Comma-separated ops, executed in the order given. Use to skip or reorder. |
+| Flag    | Default                            | Description                                                               |
+| ------- | ---------------------------------- | ------------------------------------------------------------------------- |
+| `--ops` | `rename,flatten,consolidate,clean` | Comma-separated ops, executed in the order given. Use to skip or reorder. |
 
 ### `rename` options
 
-| Flag              | Default | Description                                                |
-| ----------------- | ------- | ---------------------------------------------------------- |
-| `--strip`  | `""`    | Substring removed from each folder name, anywhere it appears (e.g. `"EK "`, `" Trial"`). All occurrences are removed. |
-| `--no-lowercase`  | off     | Disable lowercasing of folder names.                       |
-| `--no-hyphenate`  | off     | Disable converting whitespace runs to single hyphens.      |
+| Flag             | Default | Description                                                                                                           |
+| ---------------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| `--strip`        | `""`    | Substring removed from each folder name, anywhere it appears (e.g. `"EK "`, `" Trial"`). All occurrences are removed. |
+| `--no-lowercase` | off     | Disable lowercasing of folder names.                                                                                  |
+| `--no-hyphenate` | off     | Disable converting whitespace runs to single hyphens.                                                                 |
 
 ### `flatten` options
 
-| Flag              | Default   | Description                                                              |
-| ----------------- | --------- | ------------------------------------------------------------------------ |
-| `--extensions`    | `otf,ttf` | Comma-separated file extensions to flatten. Case-insensitive, leading dots optional. |
-| `--no-recursive`  | off       | Only look at direct children; do not recurse into nested folders.        |
+| Flag             | Default   | Description                                                                          |
+| ---------------- | --------- | ------------------------------------------------------------------------------------ |
+| `--extensions`   | `otf,ttf` | Comma-separated file extensions to flatten. Case-insensitive, leading dots optional. |
+| `--no-recursive` | off       | Only look at direct children; do not recurse into nested folders.                    |
 
 ### `consolidate` options
 
@@ -127,9 +127,9 @@ Single-pass. Sub-sub-families (`modena-super-compressed`, `modena-super-extended
 
 ### `prune` options
 
-| Flag      | Default | Description                                                                                                            |
-| --------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `--prune` | `""`    | Comma-separated extensions to **delete** (e.g. `ttf,woff,woff2`). **Required when `prune` is in `--ops`.**            |
+| Flag      | Default | Description                                                                                                |
+| --------- | ------- | ---------------------------------------------------------------------------------------------------------- |
+| `--prune` | `""`    | Comma-separated extensions to **delete** (e.g. `ttf,woff,woff2`). **Required when `prune` is in `--ops`.** |
 
 Safety behavior:
 
@@ -227,3 +227,4 @@ python fontadhd.py ./fonts --no-lowercase --no-hyphenate
 - **Destructive.** All ops modify the file system in place. `prune` is the only one that deletes file contents (everything not in `--keep`). Run on a copy first if you're unsure.
 - **Idempotent.** Re-running on an already-organized folder is a no-op (including `prune` once non-matching files are gone).
 - **No collision overwrites.** `flatten` skips moves when a file of the same name already exists at the destination.
+- **Why the name `fontadhd`** I have ADHD, I need order, I collect trial fonts like pokemans, but I need order, hence the name.
