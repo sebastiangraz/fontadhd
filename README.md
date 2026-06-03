@@ -1,6 +1,6 @@
 # fontadhd
 
-A small, generic script for tidying up messy font folders. It runs a short pipeline of file-system operations against a target directory — renaming folders, flattening nested font files, grouping related families, and removing empty leftovers.
+A small, generic script for tidying up messy font folders. It runs a short pipeline of file-system operations against a target directory — renaming folders, flattening nested font files, grouping related families, and removing empty leftovers. It can also install every font under a folder onto your system (macOS or Windows) in one command.
 
 The script makes no assumptions about specific foundries, families, or naming schemes. Behavior is controlled entirely through CLI flags.
 
@@ -142,6 +142,36 @@ Safety behavior:
 
 None. Always recursive, always removes only empty directories.
 
+## Installing fonts to your system
+
+Once a folder is tidy, you can install every font under it with a single command:
+
+```bash
+python fontadhd.py ./fonts --install-all
+```
+
+This is a separate feature from the op pipeline. When `--install-all` is passed without `--ops`, the default pipeline is **skipped** — `--install-all` runs alone. If you pass both, the pipeline runs first, then install.
+
+### How install works
+
+| Platform  | Destination                                          | Registration                                                                                  |
+| --------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| macOS     | `~/Library/Fonts/`                                   | None needed. System picks them up automatically.                                              |
+| Windows   | `%LOCALAPPDATA%\Microsoft\Windows\Fonts\`            | Adds an entry under `HKCU\Software\Microsoft\Windows NT\CurrentVersion\Fonts` and broadcasts `WM_FONTCHANGE` so running apps see new fonts without restart. |
+| Other     | Unsupported                                          | Prints a notice and exits.                                                                    |
+
+Both targets are **per-user**, so no admin/root is required.
+
+### Recognized font formats
+
+`.otf`, `.ttf`, `.otc`, `.ttc` (case-insensitive). Web formats like `.woff`/`.woff2` are not installable as system fonts and are ignored by this step.
+
+### Safety behavior
+
+- Counts font files first, then prompts: `Install N font file(s) to <dest>? [y/N]:`. Only `y` proceeds.
+- Files already present at the destination are skipped (idempotent).
+- Non-interactive stdin aborts rather than auto-confirming.
+
 ## Recipes
 
 ### Just rename
@@ -222,9 +252,18 @@ python fontadhd.py ./fonts --extensions otf,ttf,woff,woff2
 python fontadhd.py ./fonts --no-lowercase --no-hyphenate
 ```
 
+### Tidy and install in one go
+
+```bash
+python fontadhd.py ./fonts --strip "EK " --install-all
+```
+
+Runs the default pipeline (`rename → flatten → consolidate → clean`), then installs every resulting font into the user font directory.
+
 ## Notes
 
-- **Destructive.** All ops modify the file system in place. `prune` is the only one that deletes file contents (everything not in `--keep`). Run on a copy first if you're unsure.
-- **Idempotent.** Re-running on an already-organized folder is a no-op (including `prune` once non-matching files are gone).
-- **No collision overwrites.** `flatten` skips moves when a file of the same name already exists at the destination.
+- **Destructive.** All ops modify the file system in place. `prune` is the only one that deletes file contents (everything listed in `--prune`). Run on a copy first if you're unsure.
+- **Idempotent.** Re-running on an already-organized folder is a no-op (including `prune` once matching files are gone, and `--install-all` once fonts are installed).
+- **No collision overwrites.** `flatten` skips moves when a file of the same name already exists at the destination. `--install-all` skips files already present at the destination.
+- **`--install-all` is system-touching, not file-tidying.** It writes outside the target directory (to your user font folder, and the registry on Windows) and is the only feature that affects state beyond `target`.
 - **Why the name `fontadhd`** I have ADHD, I need order, I collect trial fonts like pokemans, but I need order, hence the name.

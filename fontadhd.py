@@ -3,6 +3,7 @@
 
 from pathlib import Path
 import argparse
+import os
 import re
 import shutil
 import sys
@@ -139,6 +140,82 @@ def prune_files(root, prune=(), **_):
             path.unlink()
 
 
+FONT_EXTS = {"otf", "ttf", "otc", "ttc"}
+
+
+def install_fonts(root):
+    root = Path(root)
+    if not root.exists():
+        print(f"install: target does not exist: {root}")
+        return
+    fonts = sorted(
+        p for p in root.rglob("*")
+        if p.is_file() and p.suffix.lower().lstrip(".") in FONT_EXTS
+    )
+    if not fonts:
+        print("install: no font files found.")
+        return
+
+    if sys.platform == "darwin":
+        dest = Path.home() / "Library" / "Fonts"
+    elif sys.platform == "win32":
+        dest = Path(os.environ["LOCALAPPDATA"]) / "Microsoft" / "Windows" / "Fonts"
+    else:
+        print(f"install: unsupported platform '{sys.platform}'. Only macOS and Windows are supported.")
+        return
+
+    try:
+        answer = input(f"Install {len(fonts)} font file(s) to {dest}? [y/N]: ").strip().lower()
+    except EOFError:
+        print("install: aborted (no interactive stdin).")
+        return
+    if answer != "y":
+        print("install: aborted.")
+        return
+
+    dest.mkdir(parents=True, exist_ok=True)
+    if sys.platform == "darwin":
+        installed, skipped = _install_macos(fonts, dest)
+    else:
+        installed, skipped = _install_windows(fonts, dest)
+    print(f"install: copied {installed}, skipped {skipped} (already present).")
+
+
+def _install_macos(fonts, dest):
+    installed = skipped = 0
+    for src in fonts:
+        target = dest / src.name
+        if target.exists():
+            skipped += 1
+            continue
+        shutil.copy2(str(src), str(target))
+        installed += 1
+    return installed, skipped
+
+
+def _install_windows(fonts, dest):
+    import winreg
+    import ctypes
+
+    suffix = {"ttf": " (TrueType)", "otf": " (OpenType)", "ttc": " (TrueType)", "otc": " (OpenType)"}
+    key_path = r"Software\Microsoft\Windows NT\CurrentVersion\Fonts"
+    installed = skipped = 0
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE) as key:
+        for src in fonts:
+            target = dest / src.name
+            if target.exists():
+                skipped += 1
+                continue
+            shutil.copy2(str(src), str(target))
+            ext = src.suffix.lower().lstrip(".")
+            value_name = src.stem + suffix.get(ext, "")
+            winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, str(target))
+            installed += 1
+    # Notify running apps so they pick up new fonts without restart.
+    ctypes.windll.user32.SendMessageW(0xFFFF, 0x001D, 0, 0)
+    return installed, skipped
+
+
 def remove_empty_dirs(root, **_):
     root = Path(root)
     for path in sorted(root.rglob("*"), key=lambda p: -len(p.parts)):
@@ -169,13 +246,19 @@ def parse_args(argv):
     p.add_argument("--separator", default="-", help="Token separator used to detect shared family prefixes (default: '-')")
     p.add_argument("--standalone-name", default="regular", help="Name used inside a family folder for a standalone variant (default: 'regular')")
     p.add_argument("--prune", default="", help="Comma-separated extensions to DELETE when running the 'prune' op (e.g. 'ttf,woff,woff2'). Prompts for confirmation before deleting.")
+    p.add_argument("--install-all", action="store_true", help="Recursively install all font files under the target into the user's font directory (macOS/Windows). Skips the default op pipeline unless --ops is also given.")
     return p.parse_args(argv)
 
 
 def main(argv=None):
     args = parse_args(argv)
     target = Path(args.target).resolve()
-    ops = [o.strip() for o in args.ops.split(",")] if args.ops else DEFAULT_ORDER
+    if args.ops:
+        ops = [o.strip() for o in args.ops.split(",")]
+    elif args.install_all:
+        ops = []
+    else:
+        ops = DEFAULT_ORDER
 
     unknown = [o for o in ops if o not in OPS]
     if unknown:
@@ -198,7 +281,10 @@ def main(argv=None):
 
     for op in ops:
         OPS[op](target, **kwargs)
-    print(f"Done: {target} ({' -> '.join(ops)})")
+    if args.install_all:
+        install_fonts(target)
+    summary = " -> ".join(ops + (["install"] if args.install_all else []))
+    print(f"Done: {target} ({summary})" if summary else f"Done: {target}")
 
 
 if __name__ == "__main__":
