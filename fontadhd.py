@@ -102,6 +102,16 @@ def consolidate_families(root, separator="-", standalone_name="regular", **_):
             shutil.move(str(standalone_src), str(dest))
 
 
+def prune_files(root, keep=(), **_):
+    root = Path(root)
+    if not root.exists() or not keep:
+        return
+    keep_exts = {e.lower().lstrip(".") for e in keep}
+    for path in list(root.rglob("*")):
+        if path.is_file() and path.suffix.lower().lstrip(".") not in keep_exts:
+            path.unlink()
+
+
 def remove_empty_dirs(root, **_):
     root = Path(root)
     for path in sorted(root.rglob("*"), key=lambda p: -len(p.parts)):
@@ -113,6 +123,7 @@ OPS = {
     "rename": rename_folders,
     "flatten": flatten_by_extension,
     "consolidate": consolidate_families,
+    "prune": prune_files,
     "clean": remove_empty_dirs,
 }
 
@@ -130,6 +141,7 @@ def parse_args(argv):
     p.add_argument("--no-recursive", action="store_true")
     p.add_argument("--separator", default="-", help="Token separator used to detect shared family prefixes (default: '-')")
     p.add_argument("--standalone-name", default="regular", help="Name used inside a family folder for a standalone variant (default: 'regular')")
+    p.add_argument("--keep", default="", help="Comma-separated extensions to keep when running the 'prune' op. All other files are deleted.")
     return p.parse_args(argv)
 
 
@@ -142,6 +154,10 @@ def main(argv=None):
     if unknown:
         sys.exit(f"Unknown op(s): {', '.join(unknown)}. Available: {', '.join(OPS)}")
 
+    keep = [e.strip() for e in args.keep.split(",") if e.strip()]
+    if "prune" in ops and not keep:
+        sys.exit("Error: 'prune' op requires --keep with at least one extension (e.g. --keep otf)")
+
     kwargs = dict(
         strip=args.strip,
         lowercase=not args.no_lowercase,
@@ -150,6 +166,7 @@ def main(argv=None):
         recursive=not args.no_recursive,
         separator=args.separator,
         standalone_name=args.standalone_name,
+        keep=keep,
     )
 
     for op in ops:

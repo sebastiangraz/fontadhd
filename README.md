@@ -55,16 +55,17 @@ trial-fonts/
 
 ## How it works
 
-The script is built around four composable operations that run sequentially against the target directory.
+The script is built around five composable operations that run sequentially against the target directory.
 
 | Op            | What it does                                                                                          |
 | ------------- | ----------------------------------------------------------------------------------------------------- |
 | `rename`      | Normalizes each immediate child folder name (strip substring, lowercase, hyphenate).                  |
 | `flatten`     | Walks each child folder and moves font files up to the child folder's root.                           |
 | `consolidate` | Detects shared name prefixes between sibling folders and groups them under a single parent.           |
+| `prune`       | Deletes any file whose extension is not in `--keep`. Opt-in (not in default order).                   |
 | `clean`       | Removes any empty directories left behind.                                                            |
 
-The default order is `rename → flatten → consolidate → clean`. You can override which ops run and in what order with `--ops`.
+The default order is `rename → flatten → consolidate → clean`. `prune` is omitted from the default because it is destructive. You can override which ops run and in what order with `--ops`.
 
 ### Why this order
 
@@ -124,6 +125,14 @@ For each immediate child folder, the name is split by `--separator` into tokens,
 
 Single-pass. Sub-sub-families (`modena-super-compressed`, `modena-super-extended`) form a `modena-super/` sibling of `modena/` rather than nesting inside it. Re-run if you want deeper folding.
 
+### `prune` options
+
+| Flag     | Default | Description                                                                                                |
+| -------- | ------- | ---------------------------------------------------------------------------------------------------------- |
+| `--keep` | `""`    | Comma-separated extensions to keep. All other files under the target are deleted. **Required when `prune` is in `--ops`.** |
+
+If `prune` appears in `--ops` without `--keep` set, the script exits with an error before making any changes.
+
 ### `clean` options
 
 None. Always recursive, always removes only empty directories.
@@ -152,6 +161,22 @@ python fontadhd.py ./fonts --ops rename,flatten,clean
 
 ```bash
 python fontadhd.py ./fonts --ops consolidate --separator " "
+```
+
+### Keep only one format
+
+Delete every file that isn't a `.otf`, anywhere under the target:
+
+```bash
+python fontadhd.py ./fonts --ops prune,clean --keep otf
+```
+
+`clean` is paired so any folders left empty by the deletions get removed too.
+
+### Full pipeline with format pruning
+
+```bash
+python fontadhd.py ./fonts --ops rename,flatten,consolidate,prune,clean --strip "EK " --keep otf
 ```
 
 ### Flatten variant subfolders after consolidating
@@ -194,6 +219,6 @@ python fontadhd.py ./fonts --no-lowercase --no-hyphenate
 
 ## Notes
 
-- **Destructive.** `rename`, `flatten`, and `clean` all modify the file system in place. Run on a copy first if you're unsure.
-- **Idempotent.** Re-running on an already-organized folder is a no-op.
+- **Destructive.** All ops modify the file system in place. `prune` is the only one that deletes file contents (everything not in `--keep`). Run on a copy first if you're unsure.
+- **Idempotent.** Re-running on an already-organized folder is a no-op (including `prune` once non-matching files are gone).
 - **No collision overwrites.** `flatten` skips moves when a file of the same name already exists at the destination.
