@@ -212,7 +212,8 @@ def _install_windows(fonts, dest):
             winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, str(target))
             installed += 1
     # Notify running apps so they pick up new fonts without restart.
-    ctypes.windll.user32.SendMessageW(0xFFFF, 0x001D, 0, 0)
+    # SendMessageTimeoutW + SMTO_ABORTIFHUNG so a stuck top-level window can't hang us.
+    ctypes.windll.user32.SendMessageTimeoutW(0xFFFF, 0x001D, 0, 0, 0x0002, 1000, None)
     return installed, skipped
 
 
