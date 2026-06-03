@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Reusable font-folder organizer. Edit the recipe at the bottom per foundry."""
+"""Generic font-folder organizer. Composable ops, configurable order."""
 
 from pathlib import Path
-import shutil
+import argparse
 import re
+import shutil
 import sys
 
 
 def normalize_name(name, strip_prefix="", lowercase=True, space_to_hyphen=True):
-    """Strip a prefix, lowercase, and convert whitespace runs to hyphens."""
     if strip_prefix and name.startswith(strip_prefix):
         name = name[len(strip_prefix):].lstrip()
     if lowercase:
@@ -18,106 +18,88 @@ def normalize_name(name, strip_prefix="", lowercase=True, space_to_hyphen=True):
     return name
 
 
-def rename_folders(root, **kwargs):
-    """Apply normalize_name to every immediate child folder of root."""
+def rename_folders(root, strip_prefix="", lowercase=True, space_to_hyphen=True, **_):
     root = Path(root)
     for child in list(root.iterdir()):
         if not child.is_dir():
             continue
-        new = normalize_name(child.name, **kwargs)
+        new = normalize_name(child.name, strip_prefix, lowercase, space_to_hyphen)
         if new != child.name:
             child.rename(root / new)
 
 
-def consolidate_families(root, families):
-    """Move sibling folders into a shared parent. families: {parent: {variant: source}}."""
+def flatten_by_extension(root, extensions=("otf", "ttf"), recursive=True, **_):
     root = Path(root)
-    for parent_name, variants in families.items():
-        parent_target = root / parent_name
-        local_variants = dict(variants)
-
-        if parent_target.is_dir() and parent_name in local_variants.values():
-            tmp = root / f".__tmp_{parent_name}"
-            parent_target.rename(tmp)
-            local_variants = {
-                k: (tmp.name if v == parent_name else v)
-                for k, v in local_variants.items()
-            }
-
-        parent_target.mkdir(exist_ok=True)
-        for variant_name, source_name in local_variants.items():
-            source = root / source_name
-            if source.exists():
-                shutil.move(str(source), str(parent_target / variant_name))
-
-
-def flatten_by_extension(folder, extensions, recursive=True):
-    """Move all files matching extensions to folder root, then drop empty subdirs."""
-    folder = Path(folder)
-    if not folder.exists():
+    if not root.exists():
         return
     exts = {e.lower().lstrip(".") for e in extensions}
-    walker = folder.rglob("*") if recursive else folder.iterdir()
+    walker = root.rglob("*") if recursive else root.iterdir()
     for path in list(walker):
         if not path.is_file():
             continue
         if path.suffix.lower().lstrip(".") not in exts:
             continue
-        target = folder / path.name
+        # Flatten into the immediate child folder (the "family" root), not the
+        # script target — preserves family grouping while collapsing weights.
+        rel = path.relative_to(root)
+        if len(rel.parts) < 2:
+            continue
+        family_root = root / rel.parts[0]
+        target = family_root / path.name
         if path.resolve() == target.resolve() or target.exists():
             continue
         shutil.move(str(path), str(target))
-    remove_empty_dirs(folder)
 
 
-def remove_empty_dirs(folder):
-    """Recursively delete empty subdirectories under folder."""
-    folder = Path(folder)
-    for path in sorted(folder.rglob("*"), key=lambda p: -len(p.parts)):
+def remove_empty_dirs(root, **_):
+    root = Path(root)
+    for path in sorted(root.rglob("*"), key=lambda p: -len(p.parts)):
         if path.is_dir() and not any(path.iterdir()):
             path.rmdir()
 
 
-# ---------------------------------------------------------------------------
-# Recipe — edit this section per foundry. Below reproduces the Erkin Karamemet
-# trial fonts layout. Pass a target dir as argv[1] or default to script dir.
-# ---------------------------------------------------------------------------
+OPS = {
+    "rename": rename_folders,
+    "flatten": flatten_by_extension,
+    "clean": remove_empty_dirs,
+}
 
-def run_erkin_karamemet(fonts_root):
-    rename_folders(fonts_root, strip_prefix="EK ", lowercase=True, space_to_hyphen=True)
+DEFAULT_ORDER = ["rename", "flatten", "clean"]
 
-    consolidate_families(fonts_root, {
-        "baumer": {
-            "headline": "baumer-headline",
-            "plus": "baumer-plus",
-            "uniwidth": "baumer-uniwidth",
-        },
-        "modena": {
-            "regular": "modena",
-            "compressed": "modena-compressed",
-            "condensed": "modena-condensed",
-            "expanded": "modena-expanded",
-            "extended": "modena-extended",
-            "mono": "modena-mono",
-            "plus": "modena-plus",
-            "super-compressed": "modena-super-compressed",
-        },
-        "notice": {
-            "classic": "notice-classic",
-            "decor": "notice-decor",
-            "sans": "notice-sans",
-        },
-        "roumald": {
-            "regular": "roumald",
-            "mono": "roumald-mono",
-        },
-    })
 
-    for family in ["baumer", "modena", "notice", "roumald", "ultimo"]:
-        flatten_by_extension(Path(fonts_root) / family, [".otf", ".ttf"])
+def parse_args(argv):
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("target", nargs="?", default=".", help="Folder to organize (default: cwd)")
+    p.add_argument("--ops", help=f"Comma-separated ops in order. Available: {','.join(OPS)}. Default: {','.join(DEFAULT_ORDER)}")
+    p.add_argument("--strip-prefix", default="", help="Prefix to remove from folder names (e.g. 'EK ')")
+    p.add_argument("--no-lowercase", action="store_true")
+    p.add_argument("--no-hyphenate", action="store_true")
+    p.add_argument("--extensions", default="otf,ttf", help="Comma-separated file extensions to flatten")
+    p.add_argument("--no-recursive", action="store_true")
+    return p.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    target = Path(args.target).resolve()
+    ops = [o.strip() for o in args.ops.split(",")] if args.ops else DEFAULT_ORDER
+
+    unknown = [o for o in ops if o not in OPS]
+    if unknown:
+        sys.exit(f"Unknown op(s): {', '.join(unknown)}. Available: {', '.join(OPS)}")
+
+    kwargs = dict(
+        strip_prefix=args.strip_prefix,
+        lowercase=not args.no_lowercase,
+        space_to_hyphen=not args.no_hyphenate,
+        extensions=[e.strip() for e in args.extensions.split(",") if e.strip()],
+        recursive=not args.no_recursive,
+    )
+
+    for op in ops:
+        OPS[op](target, **kwargs)
+    print(f"Done: {target} ({' -> '.join(ops)})")
 
 
 if __name__ == "__main__":
-    target = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent
-    run_erkin_karamemet(target)
-    print(f"Done: {target}")
+    main()
