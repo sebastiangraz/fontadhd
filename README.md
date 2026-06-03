@@ -16,7 +16,7 @@ cd fontadhd
 ## Usage
 
 ```bash
-python organize_fonts.py [target] [flags]
+python fontadhd.py [target] [flags]
 ```
 
 If `target` is omitted, the current working directory is used.
@@ -39,7 +39,7 @@ trial-fonts/
 Running:
 
 ```bash
-python organize_fonts.py trial-fonts --strip "EK "
+python fontadhd.py trial-fonts --strip "EK "
 ```
 
 produces:
@@ -109,25 +109,25 @@ None. Always recursive, always removes only empty directories.
 ### Just rename
 
 ```bash
-python organize_fonts.py ./fonts --ops rename --strip "EK "
+python fontadhd.py ./fonts --ops rename --strip "EK "
 ```
 
 ### Just flatten and clean
 
 ```bash
-python organize_fonts.py ./fonts --ops flatten,clean --extensions otf,ttf,woff2
+python fontadhd.py ./fonts --ops flatten,clean --extensions otf,ttf,woff2
 ```
 
 ### Include web font formats
 
 ```bash
-python organize_fonts.py ./fonts --extensions otf,ttf,woff,woff2
+python fontadhd.py ./fonts --extensions otf,ttf,woff,woff2
 ```
 
 ### Preserve original casing
 
 ```bash
-python organize_fonts.py ./fonts --no-lowercase --no-hyphenate
+python fontadhd.py ./fonts --no-lowercase --no-hyphenate
 ```
 
 ## Notes
