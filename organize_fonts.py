@@ -8,9 +8,9 @@ import shutil
 import sys
 
 
-def normalize_name(name, strip_prefix="", lowercase=True, space_to_hyphen=True):
-    if strip_prefix and name.startswith(strip_prefix):
-        name = name[len(strip_prefix):].lstrip()
+def normalize_name(name, strip="", lowercase=True, space_to_hyphen=True):
+    if strip:
+        name = name.replace(strip, "").strip()
     if lowercase:
         name = name.lower()
     if space_to_hyphen:
@@ -18,12 +18,12 @@ def normalize_name(name, strip_prefix="", lowercase=True, space_to_hyphen=True):
     return name
 
 
-def rename_folders(root, strip_prefix="", lowercase=True, space_to_hyphen=True, **_):
+def rename_folders(root, strip="", lowercase=True, space_to_hyphen=True, **_):
     root = Path(root)
     for child in list(root.iterdir()):
         if not child.is_dir():
             continue
-        new = normalize_name(child.name, strip_prefix, lowercase, space_to_hyphen)
+        new = normalize_name(child.name, strip, lowercase, space_to_hyphen)
         if new != child.name:
             child.rename(root / new)
 
@@ -71,7 +71,7 @@ def parse_args(argv):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("target", nargs="?", default=".", help="Folder to organize (default: cwd)")
     p.add_argument("--ops", help=f"Comma-separated ops in order. Available: {','.join(OPS)}. Default: {','.join(DEFAULT_ORDER)}")
-    p.add_argument("--strip-prefix", default="", help="Prefix to remove from folder names (e.g. 'EK ')")
+    p.add_argument("--strip", default="", help="Substring to remove from folder names, anywhere it appears (e.g. 'EK ')")
     p.add_argument("--no-lowercase", action="store_true")
     p.add_argument("--no-hyphenate", action="store_true")
     p.add_argument("--extensions", default="otf,ttf", help="Comma-separated file extensions to flatten")
@@ -89,7 +89,7 @@ def main(argv=None):
         sys.exit(f"Unknown op(s): {', '.join(unknown)}. Available: {', '.join(OPS)}")
 
     kwargs = dict(
-        strip_prefix=args.strip_prefix,
+        strip=args.strip,
         lowercase=not args.no_lowercase,
         space_to_hyphen=not args.no_hyphenate,
         extensions=[e.strip() for e in args.extensions.split(",") if e.strip()],

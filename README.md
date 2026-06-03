@@ -39,7 +39,7 @@ trial-fonts/
 Running:
 
 ```bash
-python organize_fonts.py trial-fonts --strip-prefix "EK "
+python organize_fonts.py trial-fonts --strip "EK "
 ```
 
 produces:
@@ -89,7 +89,7 @@ The default order is `rename → flatten → clean`. You can override which ops 
 
 | Flag              | Default | Description                                                |
 | ----------------- | ------- | ---------------------------------------------------------- |
-| `--strip-prefix`  | `""`    | Prefix removed from each folder name (e.g. `"EK "`).       |
+| `--strip`  | `""`    | Substring removed from each folder name, anywhere it appears (e.g. `"EK "`, `" Trial"`). All occurrences are removed. |
 | `--no-lowercase`  | off     | Disable lowercasing of folder names.                       |
 | `--no-hyphenate`  | off     | Disable converting whitespace runs to single hyphens.      |
 
@@ -109,7 +109,7 @@ None. Always recursive, always removes only empty directories.
 ### Just rename
 
 ```bash
-python organize_fonts.py ./fonts --ops rename --strip-prefix "EK "
+python organize_fonts.py ./fonts --ops rename --strip "EK "
 ```
 
 ### Just flatten and clean
