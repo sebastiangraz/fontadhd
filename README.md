@@ -1,6 +1,6 @@
 # fontadhd
 
-A small, generic script for tidying up messy font folders. It runs a short pipeline of file-system operations against a target directory — renaming folders, flattening nested font files, and removing empty leftovers.
+A small, generic script for tidying up messy font folders. It runs a short pipeline of file-system operations against a target directory — renaming folders, flattening nested font files, grouping related families, and removing empty leftovers.
 
 The script makes no assumptions about specific foundries, families, or naming schemes. Behavior is controlled entirely through CLI flags.
 
@@ -55,15 +55,22 @@ trial-fonts/
 
 ## How it works
 
-The script is built around three composable operations that run sequentially against the target directory.
+The script is built around four composable operations that run sequentially against the target directory.
 
-| Op        | What it does                                                                 |
-| --------- | ---------------------------------------------------------------------------- |
-| `rename`  | Normalizes each immediate child folder name (strip prefix, lowercase, hyphenate). |
-| `flatten` | Walks each child folder and moves font files up to the child folder's root. |
-| `clean`   | Removes any empty directories left behind.                                   |
+| Op            | What it does                                                                                          |
+| ------------- | ----------------------------------------------------------------------------------------------------- |
+| `rename`      | Normalizes each immediate child folder name (strip substring, lowercase, hyphenate).                  |
+| `flatten`     | Walks each child folder and moves font files up to the child folder's root.                           |
+| `consolidate` | Detects shared name prefixes between sibling folders and groups them under a single parent.           |
+| `clean`       | Removes any empty directories left behind.                                                            |
 
-The default order is `rename → flatten → clean`. You can override which ops run and in what order with `--ops`.
+The default order is `rename → flatten → consolidate → clean`. You can override which ops run and in what order with `--ops`.
+
+### Why this order
+
+- `rename` runs first so subsequent steps work on normalized names.
+- `flatten` runs before `consolidate` because it operates on the immediate children of the target. Once `consolidate` has nested families one level deeper (e.g. `modena-expanded/` becomes `modena/expanded/`), running `flatten` on the original target would collapse variants together. Flatten the loose files into their family folders first, then group families.
+- `clean` runs last to sweep up the empty subdirectories left behind by `flatten` and `consolidate`.
 
 ### Pipeline behavior
 
@@ -81,9 +88,9 @@ The default order is `rename → flatten → clean`. You can override which ops 
 
 ### Pipeline control
 
-| Flag     | Default                  | Description                                                                |
-| -------- | ------------------------ | -------------------------------------------------------------------------- |
-| `--ops`  | `rename,flatten,clean`   | Comma-separated ops, executed in the order given. Use to skip or reorder. |
+| Flag     | Default                              | Description                                                                |
+| -------- | ------------------------------------ | -------------------------------------------------------------------------- |
+| `--ops`  | `rename,flatten,consolidate,clean`   | Comma-separated ops, executed in the order given. Use to skip or reorder. |
 
 ### `rename` options
 
@@ -99,6 +106,23 @@ The default order is `rename → flatten → clean`. You can override which ops 
 | ----------------- | --------- | ------------------------------------------------------------------------ |
 | `--extensions`    | `otf,ttf` | Comma-separated file extensions to flatten. Case-insensitive, leading dots optional. |
 | `--no-recursive`  | off       | Only look at direct children; do not recurse into nested folders.        |
+
+### `consolidate` options
+
+| Flag                | Default   | Description                                                                                          |
+| ------------------- | --------- | ---------------------------------------------------------------------------------------------------- |
+| `--separator`       | `-`       | Token separator used to detect shared family prefixes. Match this to whatever `rename` produces.     |
+| `--standalone-name` | `regular` | Name used inside the new parent for a standalone variant (e.g. `modena/` becomes `modena/regular/`). |
+
+#### How consolidation works
+
+For each immediate child folder, the name is split by `--separator` into tokens, and every leading-token prefix is treated as a candidate family name. Any prefix shared by two or more folders becomes a grouping. Longer (more specific) prefixes win when groupings overlap, so:
+
+- `modena-expanded`, `modena-condensed` → `modena/{expanded, condensed}`
+- `ek-modena-expanded`, `ek-modena-condensed`, `ek-baumer-headline`, `ek-baumer-plus` → `ek-modena/{expanded, condensed}` and `ek-baumer/{headline, plus}` (the `ek` prefix is shared by all four but loses to the more specific two-token prefixes)
+- `roumald`, `roumald-mono` → `roumald/{regular, mono}` (the standalone is renamed to `--standalone-name`)
+
+Single-pass. Sub-sub-families (`modena-super-compressed`, `modena-super-extended`) form a `modena-super/` sibling of `modena/` rather than nesting inside it. Re-run if you want deeper folding.
 
 ### `clean` options
 
@@ -116,6 +140,18 @@ python fontadhd.py ./fonts --ops rename --strip "EK "
 
 ```bash
 python fontadhd.py ./fonts --ops flatten,clean --extensions otf,ttf,woff2
+```
+
+### Skip consolidation
+
+```bash
+python fontadhd.py ./fonts --ops rename,flatten,clean
+```
+
+### Consolidate without renaming (raw names)
+
+```bash
+python fontadhd.py ./fonts --ops consolidate --separator " "
 ```
 
 ### Include web font formats
