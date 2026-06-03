@@ -1,3 +1,6 @@
+<img width="73" height="50" alt="Frame 11" src="https://github.com/user-attachments/assets/d0878bc5-4a47-45af-b10a-cfe7892dea8c" />
+
+
 # fontadhd
 
 A small, generic script for tidying up messy font folders. It runs a short pipeline of file-system operations against a target directory — renaming folders, flattening nested font files, grouping related families, and removing empty leftovers. It can also install every font under a folder onto your system (macOS or Windows) in one command.
