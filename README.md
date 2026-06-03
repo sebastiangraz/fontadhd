@@ -154,6 +154,32 @@ python fontadhd.py ./fonts --ops rename,flatten,clean
 python fontadhd.py ./fonts --ops consolidate --separator " "
 ```
 
+### Flatten variant subfolders after consolidating
+
+Run `flatten` a second time after `consolidate` to collapse the variant subfolders, leaving each family with just its font files:
+
+```bash
+python fontadhd.py ./fonts --ops rename,flatten,consolidate,flatten,clean
+```
+
+Before the second `flatten`:
+
+```
+modena/
+├── regular/Modena-Regular.otf
+├── expanded/Modena-Expanded.otf
+└── condensed/Modena-Condensed.otf
+```
+
+After:
+
+```
+modena/
+├── Modena-Regular.otf
+├── Modena-Expanded.otf
+└── Modena-Condensed.otf
+```
+
 ### Include web font formats
 
 ```bash
