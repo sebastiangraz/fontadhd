@@ -102,13 +102,40 @@ def consolidate_families(root, separator="-", standalone_name="regular", **_):
             shutil.move(str(standalone_src), str(dest))
 
 
-def prune_files(root, keep=(), **_):
+def prune_files(root, prune=(), **_):
     root = Path(root)
-    if not root.exists() or not keep:
+    if not root.exists() or not prune:
         return
-    keep_exts = {e.lower().lstrip(".") for e in keep}
-    for path in list(root.rglob("*")):
-        if path.is_file() and path.suffix.lower().lstrip(".") not in keep_exts:
+    delete_exts = {e.lower().lstrip(".") for e in prune}
+
+    matches = {ext: [] for ext in delete_exts}
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        ext = path.suffix.lower().lstrip(".")
+        if ext in delete_exts:
+            matches[ext].append(path)
+
+    nonzero = {ext: paths for ext, paths in matches.items() if paths}
+    if not nonzero:
+        print("prune: no matching files found.")
+        return
+
+    summary = ", ".join(
+        f"{len(paths)} {ext} file{'s' if len(paths) != 1 else ''}"
+        for ext, paths in nonzero.items()
+    )
+    try:
+        answer = input(f"Are you sure you want to delete {summary}? [y/N]: ").strip().lower()
+    except EOFError:
+        print("prune: aborted (no interactive stdin).")
+        return
+    if answer != "y":
+        print("prune: aborted.")
+        return
+
+    for paths in nonzero.values():
+        for path in paths:
             path.unlink()
 
 
@@ -141,7 +168,7 @@ def parse_args(argv):
     p.add_argument("--no-recursive", action="store_true")
     p.add_argument("--separator", default="-", help="Token separator used to detect shared family prefixes (default: '-')")
     p.add_argument("--standalone-name", default="regular", help="Name used inside a family folder for a standalone variant (default: 'regular')")
-    p.add_argument("--keep", default="", help="Comma-separated extensions to keep when running the 'prune' op. All other files are deleted.")
+    p.add_argument("--prune", default="", help="Comma-separated extensions to DELETE when running the 'prune' op (e.g. 'ttf,woff,woff2'). Prompts for confirmation before deleting.")
     return p.parse_args(argv)
 
 
@@ -154,9 +181,9 @@ def main(argv=None):
     if unknown:
         sys.exit(f"Unknown op(s): {', '.join(unknown)}. Available: {', '.join(OPS)}")
 
-    keep = [e.strip() for e in args.keep.split(",") if e.strip()]
-    if "prune" in ops and not keep:
-        sys.exit("Error: 'prune' op requires --keep with at least one extension (e.g. --keep otf)")
+    prune_exts = [e.strip() for e in args.prune.split(",") if e.strip()]
+    if "prune" in ops and not prune_exts:
+        sys.exit("Error: 'prune' op requires --prune with at least one extension to delete (e.g. --prune ttf,woff2)")
 
     kwargs = dict(
         strip=args.strip,
@@ -166,7 +193,7 @@ def main(argv=None):
         recursive=not args.no_recursive,
         separator=args.separator,
         standalone_name=args.standalone_name,
-        keep=keep,
+        prune=prune_exts,
     )
 
     for op in ops:

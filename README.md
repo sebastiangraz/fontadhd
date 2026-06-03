@@ -62,7 +62,7 @@ The script is built around five composable operations that run sequentially agai
 | `rename`      | Normalizes each immediate child folder name (strip substring, lowercase, hyphenate).                  |
 | `flatten`     | Walks each child folder and moves font files up to the child folder's root.                           |
 | `consolidate` | Detects shared name prefixes between sibling folders and groups them under a single parent.           |
-| `prune`       | Deletes any file whose extension is not in `--keep`. Opt-in (not in default order).                   |
+| `prune`       | Deletes any file whose extension is in `--prune`. Prompts for confirmation. Opt-in (not in default order). |
 | `clean`       | Removes any empty directories left behind.                                                            |
 
 The default order is `rename → flatten → consolidate → clean`. `prune` is omitted from the default because it is destructive. You can override which ops run and in what order with `--ops`.
@@ -127,11 +127,16 @@ Single-pass. Sub-sub-families (`modena-super-compressed`, `modena-super-extended
 
 ### `prune` options
 
-| Flag     | Default | Description                                                                                                |
-| -------- | ------- | ---------------------------------------------------------------------------------------------------------- |
-| `--keep` | `""`    | Comma-separated extensions to keep. All other files under the target are deleted. **Required when `prune` is in `--ops`.** |
+| Flag      | Default | Description                                                                                                            |
+| --------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `--prune` | `""`    | Comma-separated extensions to **delete** (e.g. `ttf,woff,woff2`). **Required when `prune` is in `--ops`.**            |
 
-If `prune` appears in `--ops` without `--keep` set, the script exits with an error before making any changes.
+Safety behavior:
+
+- If `prune` appears in `--ops` without `--prune` set, the script exits with an error before any op runs.
+- Before deleting, `prune` prints a per-extension count (`Are you sure you want to delete 12 ttf files, 8 woff files, 8 woff2 files? [y/N]:`) and waits for `y`. Any other answer aborts.
+- If no matching files exist, `prune` prints a message and returns without prompting.
+- If stdin isn't interactive (piped, no TTY), `prune` aborts rather than auto-confirming.
 
 ### `clean` options
 
@@ -163,12 +168,12 @@ python fontadhd.py ./fonts --ops rename,flatten,clean
 python fontadhd.py ./fonts --ops consolidate --separator " "
 ```
 
-### Keep only one format
+### Delete specific formats
 
-Delete every file that isn't a `.otf`, anywhere under the target:
+Delete every `.ttf`, `.woff`, and `.woff2` file anywhere under the target (with confirmation prompt):
 
 ```bash
-python fontadhd.py ./fonts --ops prune,clean --keep otf
+python fontadhd.py ./fonts --ops prune,clean --prune ttf,woff,woff2
 ```
 
 `clean` is paired so any folders left empty by the deletions get removed too.
@@ -176,7 +181,7 @@ python fontadhd.py ./fonts --ops prune,clean --keep otf
 ### Full pipeline with format pruning
 
 ```bash
-python fontadhd.py ./fonts --ops rename,flatten,consolidate,prune,clean --strip "EK " --keep otf
+python fontadhd.py ./fonts --ops rename,flatten,consolidate,prune,clean --strip "EK " --prune ttf,woff,woff2
 ```
 
 ### Flatten variant subfolders after consolidating
