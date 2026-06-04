@@ -29,16 +29,15 @@ def rename_folders(root, strip="", lowercase=True, space_to_hyphen=True, **_):
             child.rename(root / new)
 
 
-def flatten_by_extension(root, extensions=("otf", "ttf"), recursive=True, **_):
+def flatten(root, recursive=True, **_):
     root = Path(root)
     if not root.exists():
         return
-    exts = {e.lower().lstrip(".") for e in extensions}
     walker = root.rglob("*") if recursive else root.iterdir()
     for path in list(walker):
         if not path.is_file():
             continue
-        if path.suffix.lower().lstrip(".") not in exts:
+        if path.suffix.lower().lstrip(".") not in FLATTEN_EXTS:
             continue
         # Flatten into the immediate child folder (the "family" root), not the
         # script target — preserves family grouping while collapsing weights.
@@ -141,6 +140,7 @@ def prune_files(root, prune=(), **_):
 
 
 FONT_EXTS = {"otf", "ttf", "otc", "ttc"}
+FLATTEN_EXTS = FONT_EXTS | {"woff", "woff2", "eot"}
 
 
 def install_fonts(root):
@@ -226,7 +226,7 @@ def remove_empty_dirs(root, **_):
 
 OPS = {
     "rename": rename_folders,
-    "flatten": flatten_by_extension,
+    "flatten": flatten,
     "consolidate": consolidate_families,
     "prune": prune_files,
     "clean": remove_empty_dirs,
@@ -242,7 +242,6 @@ def parse_args(argv):
     p.add_argument("--strip", default="", help="Substring to remove from folder names, anywhere it appears (e.g. 'EK ')")
     p.add_argument("--no-lowercase", action="store_true")
     p.add_argument("--no-hyphenate", action="store_true")
-    p.add_argument("--extensions", default="otf,ttf", help="Comma-separated file extensions to flatten")
     p.add_argument("--no-recursive", action="store_true")
     p.add_argument("--separator", default="-", help="Token separator used to detect shared family prefixes (default: '-')")
     p.add_argument("--standalone-name", default="regular", help="Name used inside a family folder for a standalone variant (default: 'regular')")
@@ -273,7 +272,6 @@ def main(argv=None):
         strip=args.strip,
         lowercase=not args.no_lowercase,
         space_to_hyphen=not args.no_hyphenate,
-        extensions=[e.strip() for e in args.extensions.split(",") if e.strip()],
         recursive=not args.no_recursive,
         separator=args.separator,
         standalone_name=args.standalone_name,

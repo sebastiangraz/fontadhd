@@ -79,7 +79,7 @@ The default order is `rename → flatten → consolidate → clean`. `prune` is 
 ### Pipeline behavior
 
 - Ops always run against the same target directory.
-- Each op is independent; flags only apply to the ops that consume them (e.g. `--extensions` is only used by `flatten`).
+- Each op is independent; flags only apply to the ops that consume them (e.g. `--strip` is only used by `rename`).
 - Unknown op names cause the script to exit with an error before any changes are made.
 
 ## Flags
@@ -106,10 +106,11 @@ The default order is `rename → flatten → consolidate → clean`. `prune` is 
 
 ### `flatten` options
 
-| Flag             | Default   | Description                                                                          |
-| ---------------- | --------- | ------------------------------------------------------------------------------------ |
-| `--extensions`   | `otf,ttf` | Comma-separated file extensions to flatten. Case-insensitive, leading dots optional. |
-| `--no-recursive` | off       | Only look at direct children; do not recurse into nested folders.                    |
+| Flag             | Default | Description                                                       |
+| ---------------- | ------- | ----------------------------------------------------------------- |
+| `--no-recursive` | off     | Only look at direct children; do not recurse into nested folders. |
+
+`flatten` recognizes `.otf`, `.ttf`, `.otc`, `.ttc`, `.woff`, `.woff2`, and `.eot` (case-insensitive). Anything else (text, images, samples, archives) is left in place.
 
 ### `consolidate` options
 
@@ -186,7 +187,7 @@ python fontadhd.py ./fonts --ops rename --strip "EK "
 ### Just flatten and clean
 
 ```bash
-python fontadhd.py ./fonts --ops flatten,clean --extensions otf,ttf,woff2
+python fontadhd.py ./fonts --ops flatten,clean
 ```
 
 ### Skip consolidation
@@ -241,12 +242,6 @@ modena/
 ├── Modena-Regular.otf
 ├── Modena-Expanded.otf
 └── Modena-Condensed.otf
-```
-
-### Include web font formats
-
-```bash
-python fontadhd.py ./fonts --extensions otf,ttf,woff,woff2
 ```
 
 ### Preserve original casing
