@@ -5,12 +5,17 @@
 
 Brand designers, font collectors, trial hoarders, this is for you. `fontadhd` is a small helper for organizing downloaded trial fonts. 
 - Renaming operations for folders with neurodivergent precison 
-- Grouping related families because it feels _CLEAN_
-- Flattening multi nested font files, no more digging 
-- Prune unwanted .ttf, .woff files  
+- Grouping related families because _CLEAN_
+- Flattening multi-nested font files, no more digging 
+- Prune unwanted `.ttf`, `.woff` files  
 - Install all fonts in folder, begone manual labor
+- No foundry specific assumptions, naming schemes, or structure. Results are controlled entirely through CLI flags.
 
-The script makes no assumptions about specific foundries, families, or naming schemes. Behavior is controlled entirely through CLI flags.
+My goto: runs a custom `--ops` order, calling `flatten` twice, resulting in zero sub folders. Only keeping the `.otf` files. 
+
+```bash
+python fontadhd.py [/yourfolder] --ops rename,flatten,consolidate,flatten,prune,clean --prune ttf,woff,woff2
+```
 
 https://github.com/user-attachments/assets/eac3f7f0-7590-4934-9ecc-40d2b6bf7fb4
 
