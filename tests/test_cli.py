@@ -55,6 +55,26 @@ def test_unknown_op_exits(tmp_path):
         main([str(tmp_path), "--ops", "definitely-not-an-op"])
 
 
+def test_max_flat_dissolves_standalone_variant_folder(tmp_path, make_tree, snapshot):
+    # When consolidate runs the standalone path (a family member sits alongside
+    # its variants) and is then followed by a second flatten, the synthetic
+    # 'regular/' folder dissolves like any other variant. The standalone font
+    # surfaces with its original filename — the standalone_name only labels
+    # the folder, never the file.
+    make_tree(tmp_path, {
+        "modena": ["Modena-Regular.otf"],
+        "modena-expanded": ["Modena-Expanded.otf"],
+        "modena-condensed": ["Modena-Condensed.otf"],
+    })
+    main([str(tmp_path), "--ops", "flatten,consolidate,flatten,clean"])
+    assert snapshot(tmp_path) == [
+        "modena",
+        "modena/Modena-Condensed.otf",
+        "modena/Modena-Expanded.otf",
+        "modena/Modena-Regular.otf",
+    ]
+
+
 def test_double_flatten_max_flat_workflow(tmp_path, make_tree, snapshot):
     # The 'max-flat' recipe: flatten before consolidate collapses variant
     # internals, then flatten after consolidate collapses the variant folders
