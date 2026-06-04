@@ -168,6 +168,8 @@ python fontadhd.py ./fonts --install-all
 
 This is a separate feature from the op pipeline. When `--install-all` is passed without `--ops`, the default pipeline is **skipped** `--install-all` runs alone. If you pass both, the pipeline runs first, then install.
 
+https://github.com/user-attachments/assets/d3ecc5bf-3a84-4873-a8be-5c854fca25d8
+
 ### How install works
 
 | Platform  | Destination                                          | Registration                                                                                  |
@@ -180,7 +182,7 @@ Both targets are **per-user**, so no admin/root is required.
 
 ### Recognized font formats
 
-`.otf`, `.ttf`, `.otc`, `.ttc` (case-insensitive). Web formats like `.woff`/`.woff2` are not installable as system fonts and are ignored by this step.
+`.otf`, `.ttf`, `.otc`, `.ttc`
 
 ### Safety behavior
 
