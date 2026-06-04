@@ -40,6 +40,15 @@ def test_no_strip_just_normalize(tmp_path):
     assert (tmp_path / "modena-pro").is_dir()
 
 
+def test_strip_does_not_mangle_embedded_letters(tmp_path):
+    # 'EK Noveki' should become 'noveki', not 'novi'. The trailing space in
+    # 'EK ' is what prevents the in-word 'ek' from matching.
+    (tmp_path / "EK Noveki").mkdir()
+    rename_folders(tmp_path, strip="EK ")
+    assert (tmp_path / "noveki").is_dir()
+    assert not (tmp_path / "novi").exists()
+
+
 def test_only_immediate_children_renamed(tmp_path):
     # Nested folders are not touched.
     nested = tmp_path / "EK Modena" / "Sub Folder"

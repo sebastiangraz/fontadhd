@@ -36,3 +36,14 @@ def test_multiple_spaces_collapse_to_single_hyphen():
 def test_strip_then_trim_whitespace():
     # After removing the substring, surrounding whitespace is trimmed.
     assert normalize_name("  EK Modena  ", strip="EK ") == "modena"
+
+
+def test_strip_does_not_match_embedded_letters():
+    # The trailing space in 'EK ' protects against false-positive matches inside
+    # words that happen to contain the letters 'EK' (e.g. 'Noveki', 'Trekker').
+    # Without that protection a naive strip would mangle 'Noveki' to 'Novi'.
+    assert normalize_name("EK Noveki", strip="EK ") == "noveki"
+    assert normalize_name("Noveki", strip="EK ") == "noveki"
+    assert normalize_name("EK Trekker", strip="EK ") == "trekker"
+    # Foundry prefix gets stripped, in-word occurrence does not.
+    assert normalize_name("EK Noveki EK Pro", strip="EK ") == "noveki-pro"
