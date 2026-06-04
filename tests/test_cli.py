@@ -56,6 +56,28 @@ def test_unknown_op_exits(tmp_path):
         main([str(tmp_path), "--ops", "definitely-not-an-op"])
 
 
+def test_double_flatten_max_flat_workflow(tmp_path, make_tree, snapshot):
+    # The 'max-flat' recipe: flatten before consolidate collapses variant
+    # internals, then flatten after consolidate collapses the variant folders
+    # themselves into a single family folder of loose font files.
+    make_tree(tmp_path, {
+        "EK Modena Expanded": {
+            "desktop": ["Modena-Expanded.otf"],
+        },
+        "EK Modena Condensed": ["Modena-Condensed.otf"],
+    })
+    main([
+        str(tmp_path),
+        "--ops", "rename,flatten,consolidate,flatten,clean",
+        "--strip", "EK ",
+    ])
+    assert snapshot(tmp_path) == [
+        "modena",
+        "modena/Modena-Condensed.otf",
+        "modena/Modena-Expanded.otf",
+    ]
+
+
 def test_prune_via_cli(tmp_path, make_tree, monkeypatch):
     make_tree(tmp_path, {
         "modena": ["a.otf", "b.ttf", "c.woff2"],
