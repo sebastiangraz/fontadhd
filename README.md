@@ -14,7 +14,7 @@ Brand designers, font collectors, trial hoarders, this is for you. `fontadhd` is
 My goto: runs a custom `--ops` order, calling `flatten` twice, resulting in zero sub folders. Only keeping the `.otf` files. 
 
 ```bash
-python fontadhd.py [/yourfolder] --ops rename,flatten,consolidate,flatten,prune,clean --prune ttf,woff,woff2
+python fontadhd.py [/target] --ops rename,flatten,consolidate,flatten,prune,clean --prune ttf,woff,woff2
 ```
 
 https://github.com/user-attachments/assets/eac3f7f0-7590-4934-9ecc-40d2b6bf7fb4
