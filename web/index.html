@@ -4,364 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>fontadhd</title>
-    <style>
-      :root {
-        --bg: #14161a;
-        --panel: #1c2027;
-        --panel-2: #222732;
-        --line: #2c333f;
-        --text: #e7ebf0;
-        --muted: #8a93a3;
-        --accent: #6ea8fe;
-        --add: #3ddc91;
-        --del: #ff6b6b;
-        --chip: #2a3340;
-        --radius: 10px;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      html,
-      body {
-        height: 100%;
-        margin: 0;
-      }
-      body {
-        background: var(--bg);
-        color: var(--text);
-        font:
-          14px/1.45 -apple-system,
-          "Segoe UI",
-          system-ui,
-          sans-serif;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      }
-      header {
-        padding: 14px 18px;
-        border-bottom: 1px solid var(--line);
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-      header h1 {
-        font-size: 16px;
-        margin: 0;
-        letter-spacing: 0.3px;
-      }
-      header .path {
-        color: var(--muted);
-        font-size: 12px;
-        margin-left: auto;
-        max-width: 55%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        direction: rtl;
-        text-align: left;
-      }
-      main {
-        flex: 1;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1px;
-        background: var(--line);
-        min-height: 0;
-      }
-      .pane {
-        background: var(--panel);
-        display: flex;
-        flex-direction: column;
-        min-height: 0;
-      }
-      .pane h2 {
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: var(--muted);
-        margin: 0;
-        padding: 10px 14px;
-        border-bottom: 1px solid var(--line);
-      }
-      .tree {
-        flex: 1;
-        overflow: auto;
-        padding: 8px 6px;
-        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-        font-size: 12.5px;
-      }
-      .node {
-        padding: 1px 0;
-        white-space: nowrap;
-      }
-      .node .name {
-        padding: 1px 5px;
-        border-radius: 5px;
-      }
-      .node.dir > .row .name {
-        color: var(--text);
-        font-weight: 600;
-      }
-      .node.file > .row .name {
-        color: var(--muted);
-        font-weight: 400;
-      }
-      .node.added > .row .name {
-        background: rgba(61, 220, 145, 0.15);
-        color: var(--add);
-      }
-      .node.removed > .row .name {
-        background: rgba(255, 107, 107, 0.13);
-        color: var(--del);
-        text-decoration: line-through;
-      }
-      .twirl {
-        display: inline-block;
-        width: 12px;
-        color: var(--muted);
-      }
-      .children {
-        padding-left: 14px;
-        border-left: 1px dashed var(--line);
-        margin-left: 5px;
-      }
-
-      /* Dropzone */
-      .dropzone {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 14px;
-        margin: 14px;
-        border: 2px dashed var(--line);
-        border-radius: var(--radius);
-        color: var(--muted);
-        text-align: center;
-        transition:
-          border-color 0.15s,
-          background 0.15s;
-      }
-      .dropzone.hot {
-        border-color: var(--accent);
-        background: rgba(110, 168, 254, 0.06);
-        color: var(--text);
-      }
-      .dropzone .big {
-        font-size: 15px;
-        color: var(--text);
-      }
-
-      button {
-        background: var(--accent);
-        color: #0b1220;
-        border: 0;
-        border-radius: 8px;
-        padding: 8px 14px;
-        font-weight: 600;
-        cursor: pointer;
-        font-size: 13px;
-      }
-      button.ghost {
-        background: var(--chip);
-        color: var(--text);
-      }
-      button:disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
-      }
-
-      /* Footer / pipeline */
-      footer {
-        border-top: 1px solid var(--line);
-        background: var(--panel-2);
-        display: flex;
-        flex-direction: column;
-        max-height: 46vh;
-      }
-      .pipehead {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 16px;
-        border-bottom: 1px solid var(--line);
-      }
-      .pipehead label {
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: var(--muted);
-      }
-      .pipehead .actions {
-        margin-left: auto;
-        display: flex;
-        gap: 10px;
-        align-items: center;
-      }
-      .status {
-        color: var(--muted);
-        font-size: 12px;
-        min-height: 16px;
-        max-width: 320px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .status.err {
-        color: var(--del);
-      }
-
-      .pipescroll {
-        overflow: auto;
-        padding: 14px 16px;
-      }
-      .pipeline {
-        display: flex;
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: stretch;
-        gap: 10px;
-      }
-      .pipeline:empty::after {
-        content: "Add operations below to build a pipeline →";
-        color: var(--muted);
-        font-size: 13px;
-        padding: 6px 0;
-      }
-
-      .opcard {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: var(--radius);
-        padding: 10px 11px 11px;
-        min-width: 168px;
-        max-width: 230px;
-      }
-      .opcard.dragging {
-        opacity: 0.35;
-      }
-      .opcard.over {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 1px var(--accent);
-      }
-      .opcard-head {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        cursor: grab;
-      }
-      .opcard-head .ord {
-        width: 18px;
-        height: 18px;
-        flex: none;
-        border-radius: 50%;
-        background: var(--chip);
-        color: var(--muted);
-        font-size: 11px;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .opcard-head .grip {
-        color: var(--muted);
-        font-size: 13px;
-      }
-      .opcard-head .op {
-        font-weight: 700;
-        font-size: 13.5px;
-      }
-      .opcard-head .x {
-        margin-left: auto;
-        color: var(--muted);
-        cursor: pointer;
-        padding: 0 2px;
-        font-size: 13px;
-      }
-      .opcard-head .x:hover {
-        color: var(--del);
-      }
-      .opcard .desc {
-        color: var(--muted);
-        font-size: 11.5px;
-        line-height: 1.3;
-      }
-
-      .opcard .fields {
-        display: flex;
-        flex-direction: column;
-        gap: 7px;
-        margin-top: 2px;
-      }
-      .field {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-      }
-      .field > span {
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.6px;
-        color: var(--muted);
-      }
-      .field input[type="text"] {
-        background: var(--bg);
-        border: 1px solid var(--line);
-        color: var(--text);
-        border-radius: 6px;
-        padding: 5px 7px;
-        width: 100%;
-        font-size: 12.5px;
-      }
-      .field input[type="text"]:focus {
-        outline: none;
-        border-color: var(--accent);
-      }
-      .check {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        color: var(--muted);
-        font-size: 12px;
-        cursor: pointer;
-      }
-
-      /* Palette */
-      .palette {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 7px;
-        padding: 0 16px 14px;
-      }
-      .palette .add {
-        background: transparent;
-        border: 1px dashed var(--line);
-        color: var(--muted);
-        border-radius: 8px;
-        padding: 6px 11px;
-        cursor: pointer;
-        font-size: 12.5px;
-        font-weight: 600;
-      }
-      .palette .add:hover {
-        color: var(--text);
-        border-color: var(--accent);
-      }
-      .palette .lbl {
-        color: var(--muted);
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        align-self: center;
-        margin-right: 2px;
-      }
-    </style>
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <header>
@@ -372,7 +15,7 @@
 
     <main>
       <section class="pane">
-        <h2>Before</h2>
+        <h1>Before</h1>
         <div class="tree" id="beforeTree">
           <div class="dropzone" id="dropzone">
             <div class="big">Drop a font folder here</div>
@@ -382,18 +25,18 @@
         </div>
       </section>
       <section class="pane">
-        <h2>After (preview)</h2>
+        <h1>After</h1>
         <div class="tree" id="afterTree"></div>
       </section>
     </main>
 
     <footer>
       <div class="pipehead">
-        <label>Pipeline — drag to reorder, runs left → right</label>
+        <h1>Pipeline</h1>
         <div class="actions">
           <span class="status" id="status"></span>
           <button id="install" class="ghost" disabled>Install fonts</button>
-          <button id="run" disabled>Run ▶</button>
+          <button id="run" disabled>Run</button>
         </div>
       </div>
       <div class="pipescroll">
@@ -579,9 +222,7 @@
             const head = document.createElement("div");
             head.className = "opcard-head";
             head.innerHTML =
-              '<span class="ord"></span><span class="grip">⠿</span>' +
               '<span class="op"></span><span class="x" title="Remove">✕</span>';
-            head.querySelector(".ord").textContent = i + 1;
             head.querySelector(".op").textContent = op;
             head.querySelector(".x").onclick = (e) => {
               e.stopPropagation();
@@ -591,10 +232,12 @@
             };
             card.appendChild(head);
 
-            const desc = document.createElement("div");
-            desc.className = "desc";
-            desc.textContent = OP_DESC[op] || "";
-            card.appendChild(desc);
+            head.title = OP_DESC[op] || "";
+
+            // const desc = document.createElement("div");
+            // desc.className = "desc";
+            // desc.textContent = OP_DESC[op] || "";
+            // card.appendChild(desc);
 
             const fieldNames = meta.params[op] || [];
             if (fieldNames.length) {
@@ -619,7 +262,7 @@
           meta.available.forEach((op) => {
             const b = document.createElement("button");
             b.className = "add";
-            b.textContent = "+ " + op;
+            b.textContent = op;
             b.onclick = () => {
               pipeline.push(op);
               renderPipeline();
