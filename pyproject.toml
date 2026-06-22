@@ -6,6 +6,12 @@ requires-python = ">=3.9"
 
 [project.optional-dependencies]
 dev = ["pytest>=7"]
+gui = ["pywebview>=5"]
+build = ["pywebview>=5", "pyinstaller>=6"]
+
+[project.scripts]
+fontadhd = "fontadhd:main"
+fontadhd-gui = "gui:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

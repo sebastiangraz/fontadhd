@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>fontadhd</title>
+    <style>
+      :root {
+        --bg: #14161a;
+        --panel: #1c2027;
+        --panel-2: #222732;
+        --line: #2c333f;
+        --text: #e7ebf0;
+        --muted: #8a93a3;
+        --accent: #6ea8fe;
+        --add: #3ddc91;
+        --del: #ff6b6b;
+        --chip: #2a3340;
+        --radius: 10px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font:
+          14px/1.45 -apple-system,
+          "Segoe UI",
+          system-ui,
+          sans-serif;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      header {
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      header h1 {
+        font-size: 16px;
+        margin: 0;
+        letter-spacing: 0.3px;
+      }
+      header .path {
+        color: var(--muted);
+        font-size: 12px;
+        margin-left: auto;
+        max-width: 55%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        direction: rtl;
+        text-align: left;
+      }
+      main {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1px;
+        background: var(--line);
+        min-height: 0;
+      }
+      .pane {
+        background: var(--panel);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .pane h2 {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--muted);
+        margin: 0;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      .tree {
+        flex: 1;
+        overflow: auto;
+        padding: 8px 6px;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 12.5px;
+      }
+      .node {
+        padding: 1px 0;
+        white-space: nowrap;
+      }
+      .node .name {
+        padding: 1px 5px;
+        border-radius: 5px;
+      }
+      .node.dir > .row .name {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .node.file > .row .name {
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .node.added > .row .name {
+        background: rgba(61, 220, 145, 0.15);
+        color: var(--add);
+      }
+      .node.removed > .row .name {
+        background: rgba(255, 107, 107, 0.13);
+        color: var(--del);
+        text-decoration: line-through;
+      }
+      .twirl {
+        display: inline-block;
+        width: 12px;
+        color: var(--muted);
+      }
+      .children {
+        padding-left: 14px;
+        border-left: 1px dashed var(--line);
+        margin-left: 5px;
+      }
+
+      /* Dropzone */
+      .dropzone {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        margin: 14px;
+        border: 2px dashed var(--line);
+        border-radius: var(--radius);
+        color: var(--muted);
+        text-align: center;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+      }
+      .dropzone.hot {
+        border-color: var(--accent);
+        background: rgba(110, 168, 254, 0.06);
+        color: var(--text);
+      }
+      .dropzone .big {
+        font-size: 15px;
+        color: var(--text);
+      }
+
+      button {
+        background: var(--accent);
+        color: #0b1220;
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      button.ghost {
+        background: var(--chip);
+        color: var(--text);
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      /* Footer / pipeline */
+      footer {
+        border-top: 1px solid var(--line);
+        background: var(--panel-2);
+        display: flex;
+        flex-direction: column;
+        max-height: 46vh;
+      }
+      .pipehead {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+      .pipehead label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--muted);
+      }
+      .pipehead .actions {
+        margin-left: auto;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .status {
+        color: var(--muted);
+        font-size: 12px;
+        min-height: 16px;
+        max-width: 320px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .status.err {
+        color: var(--del);
+      }
+
+      .pipescroll {
+        overflow: auto;
+        padding: 14px 16px;
+      }
+      .pipeline {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: stretch;
+        gap: 10px;
+      }
+      .pipeline:empty::after {
+        content: "Add operations below to build a pipeline →";
+        color: var(--muted);
+        font-size: 13px;
+        padding: 6px 0;
+      }
+
+      .opcard {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 10px 11px 11px;
+        min-width: 168px;
+        max-width: 230px;
+      }
+      .opcard.dragging {
+        opacity: 0.35;
+      }
+      .opcard.over {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent);
+      }
+      .opcard-head {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        cursor: grab;
+      }
+      .opcard-head .ord {
+        width: 18px;
+        height: 18px;
+        flex: none;
+        border-radius: 50%;
+        background: var(--chip);
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .opcard-head .grip {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .opcard-head .op {
+        font-weight: 700;
+        font-size: 13.5px;
+      }
+      .opcard-head .x {
+        margin-left: auto;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 0 2px;
+        font-size: 13px;
+      }
+      .opcard-head .x:hover {
+        color: var(--del);
+      }
+      .opcard .desc {
+        color: var(--muted);
+        font-size: 11.5px;
+        line-height: 1.3;
+      }
+
+      .opcard .fields {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        margin-top: 2px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .field > span {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--muted);
+      }
+      .field input[type="text"] {
+        background: var(--bg);
+        border: 1px solid var(--line);
+        color: var(--text);
+        border-radius: 6px;
+        padding: 5px 7px;
+        width: 100%;
+        font-size: 12.5px;
+      }
+      .field input[type="text"]:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+      .check {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      /* Palette */
+      .palette {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        padding: 0 16px 14px;
+      }
+      .palette .add {
+        background: transparent;
+        border: 1px dashed var(--line);
+        color: var(--muted);
+        border-radius: 8px;
+        padding: 6px 11px;
+        cursor: pointer;
+        font-size: 12.5px;
+        font-weight: 600;
+      }
+      .palette .add:hover {
+        color: var(--text);
+        border-color: var(--accent);
+      }
+      .palette .lbl {
+        color: var(--muted);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        align-self: center;
+        margin-right: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>fontadhd</h1>
+      <button id="pick" class="ghost">Choose folder…</button>
+      <span class="path" id="path"></span>
+    </header>
+
+    <main>
+      <section class="pane">
+        <h2>Before</h2>
+        <div class="tree" id="beforeTree">
+          <div class="dropzone" id="dropzone">
+            <div class="big">Drop a font folder here</div>
+            <div>— or —</div>
+            <button id="pick2">Choose folder…</button>
+          </div>
+        </div>
+      </section>
+      <section class="pane">
+        <h2>After (preview)</h2>
+        <div class="tree" id="afterTree"></div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="pipehead">
+        <label>Pipeline — drag to reorder, runs left → right</label>
+        <div class="actions">
+          <span class="status" id="status"></span>
+          <button id="install" class="ghost" disabled>Install fonts</button>
+          <button id="run" disabled>Run ▶</button>
+        </div>
+      </div>
+      <div class="pipescroll">
+        <div class="pipeline" id="pipeline"></div>
+      </div>
+      <div class="palette" id="palette"></div>
+    </footer>
+
+    <script>
+      (function () {
+        "use strict";
+
+        let api = null; // window.pywebview.api once ready
+        let folder = null; // selected folder path
+        let pipeline = []; // ordered list of op names
+        let meta = { available: [], default: [], params: {} };
+        let previewTimer = null;
+
+        // Single source of truth for option values (kwargs are global in fontadhd,
+        // and each field belongs to exactly one op, so a flat store is correct).
+        const opts = {
+          strip: "",
+          prune: "",
+          separator: "-",
+          standalone_name: "regular",
+          no_lowercase: false,
+          no_hyphenate: false,
+          no_recursive: false,
+        };
+
+        // UI descriptors for each option field the backend may list per op.
+        const PARAM_UI = {
+          strip: { type: "text", label: "strip", placeholder: "e.g. EK " },
+          prune: {
+            type: "text",
+            label: "delete exts",
+            placeholder: "ttf,woff2",
+          },
+          separator: { type: "text", label: "separator", placeholder: "-" },
+          standalone_name: {
+            type: "text",
+            label: "standalone name",
+            placeholder: "regular",
+          },
+          no_lowercase: { type: "check", label: "keep original case" },
+          no_hyphenate: { type: "check", label: "keep spaces" },
+          no_recursive: { type: "check", label: "direct children only" },
+        };
+
+        const OP_DESC = {
+          rename: "Normalize folder names.",
+          flatten: "Move font files up to the family root.",
+          consolidate: "Group families by shared prefix.",
+          prune: "Delete the chosen file types.",
+          clean: "Remove empty folders.",
+        };
+
+        const $ = (id) => document.getElementById(id);
+        const statusEl = $("status");
+
+        function setStatus(msg, isErr) {
+          statusEl.textContent = msg || "";
+          statusEl.title = msg || "";
+          statusEl.classList.toggle("err", !!isErr);
+        }
+
+        function gatherOpts() {
+          return Object.assign({}, opts);
+        }
+
+        // ---- tree rendering with diff highlighting -------------------------------
+        function pathSet(tree, prefix, set) {
+          if (!tree) return set;
+          const here = prefix + "/" + tree.name;
+          (tree.children || []).forEach((c) => {
+            const key = here + "/" + c.name + (c.type === "dir" ? "/" : "");
+            set.add(key);
+            if (c.type === "dir") pathSet(c, here, set);
+          });
+          return set;
+        }
+
+        function renderTree(container, tree, otherSet, mode) {
+          container.innerHTML = "";
+          if (!tree) return;
+          container.appendChild(nodeEl(tree, "", otherSet, mode, true));
+        }
+
+        function nodeEl(node, prefix, otherSet, mode, isRoot) {
+          const el = document.createElement("div");
+          el.className = "node " + node.type;
+          const here = prefix + "/" + node.name;
+
+          if (!isRoot && otherSet) {
+            const key = here + (node.type === "dir" ? "/" : "");
+            if (!otherSet.has(key)) {
+              el.classList.add(mode === "after" ? "added" : "removed");
+            }
+          }
+
+          const row = document.createElement("div");
+          row.className = "row";
+          const twirl = document.createElement("span");
+          twirl.className = "twirl";
+          twirl.textContent = node.type === "dir" ? "▾" : "";
+          const name = document.createElement("span");
+          name.className = "name";
+          name.textContent = node.name + (node.type === "dir" ? "/" : "");
+          row.appendChild(twirl);
+          row.appendChild(name);
+          el.appendChild(row);
+
+          if (node.children && node.children.length) {
+            const kids = document.createElement("div");
+            kids.className = "children";
+            node.children.forEach((c) =>
+              kids.appendChild(nodeEl(c, here, otherSet, mode, false)),
+            );
+            el.appendChild(kids);
+          }
+          return el;
+        }
+
+        function showBeforeOnly(tree) {
+          renderTree($("beforeTree"), tree, null, "before");
+          $("afterTree").innerHTML = "";
+        }
+
+        function showDiff(before, after) {
+          const beforeSet = pathSet(before, "", new Set());
+          const afterSet = pathSet(after, "", new Set());
+          renderTree($("beforeTree"), before, afterSet, "before");
+          renderTree($("afterTree"), after, beforeSet, "after");
+        }
+
+        // ---- option controls (rendered inside each op card) ----------------------
+        function makeField(field) {
+          const ui = PARAM_UI[field];
+          if (!ui) return null;
+          if (ui.type === "check") {
+            const label = document.createElement("label");
+            label.className = "check";
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.checked = !!opts[field];
+            cb.addEventListener("change", () => {
+              opts[field] = cb.checked;
+              schedulePreview();
+            });
+            const span = document.createElement("span");
+            span.textContent = ui.label;
+            label.appendChild(cb);
+            label.appendChild(span);
+            return label;
+          }
+          const wrap = document.createElement("label");
+          wrap.className = "field";
+          const span = document.createElement("span");
+          span.textContent = ui.label;
+          const input = document.createElement("input");
+          input.type = "text";
+          input.value = opts[field] || "";
+          input.placeholder = ui.placeholder || "";
+          input.addEventListener("input", () => {
+            opts[field] = input.value;
+            schedulePreview();
+          });
+          wrap.appendChild(span);
+          wrap.appendChild(input);
+          return wrap;
+        }
+
+        // ---- pipeline (reorderable op cards, horizontal) -------------------------
+        function renderPipeline() {
+          const wrap = $("pipeline");
+          wrap.innerHTML = "";
+          pipeline.forEach((op, i) => {
+            const card = document.createElement("div");
+            card.className = "opcard";
+            card.draggable = true;
+            card.dataset.index = i;
+
+            const head = document.createElement("div");
+            head.className = "opcard-head";
+            head.innerHTML =
+              '<span class="ord"></span><span class="grip">⠿</span>' +
+              '<span class="op"></span><span class="x" title="Remove">✕</span>';
+            head.querySelector(".ord").textContent = i + 1;
+            head.querySelector(".op").textContent = op;
+            head.querySelector(".x").onclick = (e) => {
+              e.stopPropagation();
+              pipeline.splice(i, 1);
+              renderPipeline();
+              schedulePreview();
+            };
+            card.appendChild(head);
+
+            const desc = document.createElement("div");
+            desc.className = "desc";
+            desc.textContent = OP_DESC[op] || "";
+            // card.appendChild(desc);
+
+            const fieldNames = meta.params[op] || [];
+            if (fieldNames.length) {
+              const fields = document.createElement("div");
+              fields.className = "fields";
+              fieldNames.forEach((f) => {
+                const el = makeField(f);
+                if (el) fields.appendChild(el);
+              });
+              card.appendChild(fields);
+            }
+
+            wireDrag(card);
+            wrap.appendChild(card);
+          });
+          renderPalette();
+        }
+
+        function renderPalette() {
+          const pal = $("palette");
+          pal.innerHTML = '<span class="lbl">Add step</span>';
+          meta.available.forEach((op) => {
+            const b = document.createElement("button");
+            b.className = "add";
+            b.textContent = "+ " + op;
+            b.onclick = () => {
+              pipeline.push(op);
+              renderPipeline();
+              schedulePreview();
+            };
+            pal.appendChild(b);
+          });
+        }
+
+        let dragFrom = null;
+        function wireDrag(card) {
+          // Don't initiate a drag while the user is editing a field in the card.
+          card.addEventListener("focusin", () => {
+            card.draggable = false;
+          });
+          card.addEventListener("focusout", () => {
+            card.draggable = true;
+          });
+
+          card.addEventListener("dragstart", (e) => {
+            dragFrom = +card.dataset.index;
+            card.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", String(dragFrom));
+          });
+          card.addEventListener("dragend", () => {
+            card.classList.remove("dragging");
+            document
+              .querySelectorAll(".opcard.over")
+              .forEach((c) => c.classList.remove("over"));
+          });
+          card.addEventListener("dragover", (e) => {
+            if (dragFrom === null) return; // ignore folder drags
+            e.preventDefault();
+            card.classList.add("over");
+          });
+          card.addEventListener("dragleave", () =>
+            card.classList.remove("over"),
+          );
+          card.addEventListener("drop", (e) => {
+            if (dragFrom === null) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const to = +card.dataset.index;
+            if (dragFrom !== to) {
+              const [moved] = pipeline.splice(dragFrom, 1);
+              pipeline.splice(to, 0, moved);
+              renderPipeline();
+              schedulePreview();
+            }
+            dragFrom = null;
+          });
+        }
+
+        // ---- backend calls -------------------------------------------------------
+        function schedulePreview() {
+          if (previewTimer) clearTimeout(previewTimer);
+          previewTimer = setTimeout(doPreview, 250);
+        }
+
+        async function doPreview() {
+          if (!folder) return;
+          if (!pipeline.length) {
+            setStatus("Add at least one operation.");
+            $("afterTree").innerHTML = "";
+            return;
+          }
+          setStatus("Previewing…");
+          try {
+            const res = await api.preview(folder, pipeline, gatherOpts());
+            if (res.error) {
+              setStatus(res.error, true);
+              return;
+            }
+            showDiff(res.before, res.after);
+            setStatus("Preview ready — Run to apply.");
+          } catch (e) {
+            setStatus(String(e), true);
+          }
+        }
+
+        async function loadFolder(path) {
+          if (!path) return;
+          folder = path;
+          $("path").textContent = path;
+          $("dropzone") && $("dropzone").remove();
+          $("run").disabled = false;
+          $("install").disabled = false;
+          setStatus("Scanning…");
+          try {
+            const res = await api.scan(path);
+            if (res.error) {
+              setStatus(res.error, true);
+              return;
+            }
+            showBeforeOnly(res.tree);
+            schedulePreview();
+          } catch (e) {
+            setStatus(String(e), true);
+          }
+        }
+
+        async function doRun() {
+          if (!folder || !pipeline.length) return;
+          setStatus("Running pipeline…");
+          $("run").disabled = true;
+          try {
+            const res = await api.apply(folder, pipeline, gatherOpts());
+            if (res.error) {
+              setStatus(res.error, true);
+              return;
+            }
+            const rescan = await api.scan(folder);
+            showBeforeOnly(rescan.tree);
+            schedulePreview();
+            setStatus("Done — pipeline applied.");
+          } catch (e) {
+            setStatus(String(e), true);
+          } finally {
+            $("run").disabled = false;
+          }
+        }
+
+        async function doInstall() {
+          if (!folder) return;
+          setStatus("Installing fonts…");
+          try {
+            const res = await api.install(folder);
+            setStatus(
+              res && res.error ? res.error : "Fonts installed.",
+              res && !!res.error,
+            );
+          } catch (e) {
+            setStatus(String(e), true);
+          }
+        }
+
+        // ---- folder picking + drag/drop ------------------------------------------
+        async function pickFolder() {
+          try {
+            const path = await api.pick_folder();
+            if (path) loadFolder(path);
+          } catch (e) {
+            setStatus(String(e), true);
+          }
+        }
+
+        function wireDropTarget() {
+          const body = document.body;
+          body.addEventListener("dragover", (e) => {
+            if (dragFrom !== null) return; // reordering an op card, not a folder
+            e.preventDefault();
+            $("dropzone") && $("dropzone").classList.add("hot");
+          });
+          body.addEventListener(
+            "dragleave",
+            () => $("dropzone") && $("dropzone").classList.remove("hot"),
+          );
+          body.addEventListener("drop", async (e) => {
+            if (dragFrom !== null) return;
+            e.preventDefault();
+            $("dropzone") && $("dropzone").classList.remove("hot");
+            const f = e.dataTransfer.files && e.dataTransfer.files[0];
+            if (!f) return;
+            const full = f.pywebviewFullPath || f.path;
+            if (!full) {
+              setStatus(
+                "Couldn't read dropped path — use Choose folder…",
+                true,
+              );
+              return;
+            }
+            try {
+              const resolved = await api.resolve_dropped(full);
+              if (resolved) loadFolder(resolved);
+              else setStatus("Drop a folder, not a file.", true);
+            } catch (err) {
+              setStatus(String(err), true);
+            }
+          });
+        }
+
+        // ---- init ----------------------------------------------------------------
+        function bindControls() {
+          $("pick").onclick = pickFolder;
+          $("pick2") && ($("pick2").onclick = pickFolder);
+          $("run").onclick = doRun;
+          $("install").onclick = doInstall;
+        }
+
+        async function start() {
+          api = window.pywebview.api;
+          bindControls();
+          wireDropTarget();
+          meta = await api.list_ops();
+          pipeline = meta.default.slice();
+          renderPipeline();
+          setStatus("Choose or drop a font folder to begin.");
+        }
+
+        if (window.pywebview && window.pywebview.api) {
+          start();
+        } else {
+          window.addEventListener("pywebviewready", start);
+        }
+      })();
+    </script>
+  </body>
+</html>

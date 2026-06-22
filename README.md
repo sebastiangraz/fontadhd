@@ -36,6 +36,28 @@ python fontadhd.py [target] [flags]
 
 If `target` is omitted, the current working directory is used.
 
+## Desktop app (GUI)
+
+Prefer dragging and dropping? There's a lightweight desktop GUI that wraps the same ops. Drop a font folder, see a live **before → after preview** (computed on a throwaway copy, so your folder isn't touched until you commit), drag the operations into the order you want, then hit **Run**.
+
+```bash
+pip install ".[gui]"        # one dependency: pywebview
+python fontadhd.py --gui    # or: fontadhd-gui
+```
+
+The GUI calls the exact same operations as the CLI, so the result of **Run** matches what the equivalent `--ops` command would produce.
+
+### Build a double-clickable app
+
+To produce a standalone app that doesn't need Python installed:
+
+```bash
+pip install ".[build]"
+pyinstaller fontadhd.spec
+```
+
+This emits `dist/fontadhd.app` (macOS) or `dist/fontadhd/fontadhd.exe` (Windows). Builds are per-OS — run the command on the platform you're targeting. On Windows the app uses the Edge WebView2 runtime, which ships with Windows 11.
+
 ### Example
 
 Given a folder like:

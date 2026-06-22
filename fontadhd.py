@@ -102,7 +102,7 @@ def consolidate_families(root, separator="-", standalone_name="regular", **_):
             shutil.move(str(standalone_src), str(dest))
 
 
-def prune_files(root, prune=(), **_):
+def prune_files(root, prune=(), assume_yes=False, **_):
     root = Path(root)
     if not root.exists() or not prune:
         return
@@ -125,14 +125,15 @@ def prune_files(root, prune=(), **_):
         f"{len(paths)} {ext} file{'s' if len(paths) != 1 else ''}"
         for ext, paths in nonzero.items()
     )
-    try:
-        answer = input(f"Are you sure you want to delete {summary}? [y/N]: ").strip().lower()
-    except EOFError:
-        print("prune: aborted (no interactive stdin).")
-        return
-    if answer != "y":
-        print("prune: aborted.")
-        return
+    if not assume_yes:
+        try:
+            answer = input(f"Are you sure you want to delete {summary}? [y/N]: ").strip().lower()
+        except EOFError:
+            print("prune: aborted (no interactive stdin).")
+            return
+        if answer != "y":
+            print("prune: aborted.")
+            return
 
     for paths in nonzero.values():
         for path in paths:
@@ -143,7 +144,7 @@ FONT_EXTS = {"otf", "ttf", "otc", "ttc"}
 FLATTEN_EXTS = FONT_EXTS | {"woff", "woff2", "eot"}
 
 
-def install_fonts(root):
+def install_fonts(root, assume_yes=False):
     root = Path(root)
     if not root.exists():
         print(f"install: target does not exist: {root}")
@@ -164,14 +165,15 @@ def install_fonts(root):
         print(f"install: unsupported platform '{sys.platform}'. Only macOS and Windows are supported.")
         return
 
-    try:
-        answer = input(f"Install {len(fonts)} font file(s) to {dest}? [y/N]: ").strip().lower()
-    except EOFError:
-        print("install: aborted (no interactive stdin).")
-        return
-    if answer != "y":
-        print("install: aborted.")
-        return
+    if not assume_yes:
+        try:
+            answer = input(f"Install {len(fonts)} font file(s) to {dest}? [y/N]: ").strip().lower()
+        except EOFError:
+            print("install: aborted (no interactive stdin).")
+            return
+        if answer != "y":
+            print("install: aborted.")
+            return
 
     dest.mkdir(parents=True, exist_ok=True)
     if sys.platform == "darwin":
@@ -247,11 +249,23 @@ def parse_args(argv):
     p.add_argument("--standalone-name", default="regular", help="Name used inside a family folder for a standalone variant (default: 'regular')")
     p.add_argument("--prune", default="", help="Comma-separated extensions to DELETE when running the 'prune' op (e.g. 'ttf,woff,woff2'). Prompts for confirmation before deleting.")
     p.add_argument("--install-all", action="store_true", help="Recursively install all font files under the target into the user's font directory (macOS/Windows). Skips the default op pipeline unless --ops is also given.")
+    p.add_argument("--gui", action="store_true", help="Launch the desktop GUI instead of running the pipeline (requires the optional 'gui' extra: pip install pywebview).")
     return p.parse_args(argv)
 
 
 def main(argv=None):
     args = parse_args(argv)
+    if args.gui:
+        # Lazy import so the CLI keeps zero runtime dependencies when the
+        # optional 'gui' extra (pywebview) is not installed.
+        try:
+            import gui
+            gui.main()
+        except ModuleNotFoundError as e:
+            if e.name in ("webview", "gui"):
+                sys.exit("--gui requires pywebview. Install it with: pip install pywebview")
+            raise
+        return
     target = Path(args.target).resolve()
     if args.ops:
         ops = [o.strip() for o in args.ops.split(",")]
@@ -276,6 +290,7 @@ def main(argv=None):
         separator=args.separator,
         standalone_name=args.standalone_name,
         prune=prune_exts,
+        assume_yes=False,
     )
 
     for op in ops:
