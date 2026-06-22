@@ -594,7 +594,7 @@
             const desc = document.createElement("div");
             desc.className = "desc";
             desc.textContent = OP_DESC[op] || "";
-            // card.appendChild(desc);
+            card.appendChild(desc);
 
             const fieldNames = meta.params[op] || [];
             if (fieldNames.length) {
@@ -675,6 +675,16 @@
         }
 
         // ---- backend calls -------------------------------------------------------
+        // Persist UI state on the Python side so a dev live-reload can restore it.
+        function saveState() {
+          if (!api || !api.remember) return;
+          try {
+            api.remember({ folder, pipeline, opts });
+          } catch (e) {
+            /* non-fatal */
+          }
+        }
+
         function schedulePreview() {
           if (previewTimer) clearTimeout(previewTimer);
           previewTimer = setTimeout(doPreview, 250);
@@ -688,6 +698,7 @@
             return;
           }
           setStatus("Previewing…");
+          saveState();
           try {
             const res = await api.preview(folder, pipeline, gatherOpts());
             if (res.error) {
@@ -708,6 +719,7 @@
           $("dropzone") && $("dropzone").remove();
           $("run").disabled = false;
           $("install").disabled = false;
+          saveState();
           setStatus("Scanning…");
           try {
             const res = await api.scan(path);
@@ -815,9 +827,27 @@
           bindControls();
           wireDropTarget();
           meta = await api.list_ops();
-          pipeline = meta.default.slice();
+
+          // Restore state from a previous session (survives dev live-reload).
+          let saved = null;
+          try {
+            saved = await api.recall();
+          } catch (e) {
+            /* no saved state */
+          }
+          if (saved && Array.isArray(saved.pipeline)) {
+            pipeline = saved.pipeline.slice();
+            if (saved.opts) Object.assign(opts, saved.opts);
+          } else {
+            pipeline = meta.default.slice();
+          }
           renderPipeline();
-          setStatus("Choose or drop a font folder to begin.");
+
+          if (saved && saved.folder) {
+            loadFolder(saved.folder);
+          } else {
+            setStatus("Choose or drop a font folder to begin.");
+          }
         }
 
         if (window.pywebview && window.pywebview.api) {
@@ -826,6 +856,25 @@
           window.addEventListener("pywebviewready", start);
         }
       })();
+    </script>
+    <script>
+      // Dev live-reload: poll the dev server's /__mtime change token and reload
+      // when web/ assets change. Active only when served over http (--dev); in
+      // the packaged app the page loads from file://, so this stays dormant.
+      if (location.protocol.indexOf("http") === 0) {
+        let last = null;
+        setInterval(async () => {
+          try {
+            const v = await (
+              await fetch("/__mtime", { cache: "no-store" })
+            ).text();
+            if (last !== null && v !== last) location.reload();
+            last = v;
+          } catch (e) {
+            /* server not ready / transient */
+          }
+        }, 500);
+      }
     </script>
   </body>
 </html>

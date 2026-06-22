@@ -119,3 +119,10 @@ def test_list_ops_shape(api):
     assert info["default"] == ["rename", "flatten", "consolidate", "clean"]
     assert "prune" in info["available"]
     assert set(info["params"]) == set(info["available"])
+
+
+def test_remember_recall_roundtrip(api):
+    assert api.recall() is None
+    state = {"folder": "/some/path", "pipeline": ["rename", "clean"], "opts": {"strip": "EK "}}
+    assert api.remember(state) is True
+    assert api.recall() == state

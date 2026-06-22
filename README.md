@@ -47,6 +47,14 @@ python fontadhd.py --gui    # or: fontadhd-gui
 
 The GUI calls the exact same operations as the CLI, so the result of **Run** matches what the equivalent `--ops` command would produce.
 
+### Editing the UI (live reload)
+
+Working on the interface? Add `--dev` to watch `web/` and reload the window automatically whenever you save an edit to the HTML/CSS/JS. It also opens the webview devtools. Your selected folder and pipeline are preserved across reloads, so the before/after panes stay populated while you tweak styles.
+
+```bash
+python fontadhd.py --gui --dev
+```
+
 ### Build a double-clickable app
 
 To produce a standalone app that doesn't need Python installed:

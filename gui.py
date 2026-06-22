@@ -185,19 +185,91 @@ class Api:
         install_fonts(target, assume_yes=True)
         return {"ok": True}
 
+    # --- session state (survives dev live-reloads) ------------------------
+    def remember(self, state):
+        """Stash plain UI state (folder, pipeline, opts) on the Python side.
 
-def main():
+        Only JSON-ish data is stored — never a window/native reference — so the
+        frontend can restore itself after a dev reload re-runs the page.
+        """
+        self._state = state
+        return True
+
+    def recall(self):
+        return getattr(self, "_state", None)
+
+
+_WATCH_EXTS = {".html", ".css", ".js"}
+
+
+def _latest_mtime():
+    """Most recent mtime across watched web/ assets (a change token)."""
+    latest = 0.0
+    for p in WEB_DIR.rglob("*"):
+        if p.is_file() and p.suffix.lower() in _WATCH_EXTS:
+            try:
+                latest = max(latest, p.stat().st_mtime)
+            except OSError:
+                pass
+    return latest
+
+
+def _start_dev_server():
+    """Serve web/ over localhost with caching disabled, plus a /__mtime change
+    token the page polls to live-reload itself.
+
+    WebView2 caches file:// assets, so reloading a file:// URL shows stale
+    CSS/JS. Serving over http with 'Cache-Control: no-store' makes every reload
+    fetch fresh. The reload is driven by the page (see the dev poller in
+    index.html) rather than a cross-thread window.load_url() from Python, which
+    is unreliable on the Windows backend. Stdlib only.
+    """
+    import functools
+    import threading
+    from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+
+    class Handler(SimpleHTTPRequestHandler):
+        def do_GET(self):
+            if self.path.split("?", 1)[0] == "/__mtime":
+                body = repr(_latest_mtime()).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            return super().do_GET()
+
+        def end_headers(self):
+            self.send_header("Cache-Control", "no-store, must-revalidate")
+            self.send_header("Expires", "0")
+            super().end_headers()
+
+        def log_message(self, *_):
+            pass  # keep the console quiet
+
+    handler = functools.partial(Handler, directory=str(WEB_DIR))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    port = server.server_address[1]
+    print(f"[fontadhd] dev server on http://127.0.0.1:{port} (live-reload on)")
+    return f"http://127.0.0.1:{port}/index.html"
+
+
+def main(dev=False):
     import webview
+    url = _start_dev_server() if dev else str(WEB_DIR / "index.html")
     webview.create_window(
         "fontadhd",
-        str(WEB_DIR / "index.html"),
+        url,
         js_api=Api(),
         width=1000,
         height=720,
         min_size=(720, 560),
     )
-    webview.start()
+    webview.start(debug=dev)
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    main(dev="--dev" in sys.argv)

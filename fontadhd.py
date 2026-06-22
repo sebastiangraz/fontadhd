@@ -250,6 +250,7 @@ def parse_args(argv):
     p.add_argument("--prune", default="", help="Comma-separated extensions to DELETE when running the 'prune' op (e.g. 'ttf,woff,woff2'). Prompts for confirmation before deleting.")
     p.add_argument("--install-all", action="store_true", help="Recursively install all font files under the target into the user's font directory (macOS/Windows). Skips the default op pipeline unless --ops is also given.")
     p.add_argument("--gui", action="store_true", help="Launch the desktop GUI instead of running the pipeline (requires the optional 'gui' extra: pip install pywebview).")
+    p.add_argument("--dev", action="store_true", help="With --gui: enable live-reload of web/ assets and webview devtools (for editing the UI).")
     return p.parse_args(argv)
 
 
@@ -260,7 +261,7 @@ def main(argv=None):
         # optional 'gui' extra (pywebview) is not installed.
         try:
             import gui
-            gui.main()
+            gui.main(dev=args.dev)
         except ModuleNotFoundError as e:
             if e.name in ("webview", "gui"):
                 sys.exit("--gui requires pywebview. Install it with: pip install pywebview")
