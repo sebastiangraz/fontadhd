@@ -110,11 +110,15 @@ h1 {
 }
 .check {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 0.25rem;
   color: var(--fg-secondary);
   font-size: 12px;
   cursor: pointer;
+  span {
+    white-space: nowrap;
+  }
 }
 .pane {
   background: var(--bg);
@@ -183,7 +187,10 @@ h1 {
   & .opcard {
     background: var(--bg);
     flex: 1 1 0%;
+    max-width: 20rem;
+    min-width: 15rem;
     display: flex;
+    justify-content: space-between;
     flex-direction: column;
     gap: 1rem;
     padding: 0.5rem;
@@ -191,17 +198,23 @@ h1 {
 
     & .fields {
       display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
+      flex-direction: row;
+      align-items: end;
+      gap: 1rem;
 
       & .field {
         color: var(--fg-secondary);
         display: flex;
-        align-items: center;
-        gap: 0.25rem;
-        & > * {
+        flex-direction: column;
+        align-items: start;
+        justify-content: flex-start;
+        gap: 0.5rem;
+        flex: 1 1 0%;
+        span {
           white-space: nowrap;
-          flex: 1 1 0%;
+        }
+        input {
+          width: 100%;
         }
       }
     }
